@@ -1,0 +1,7 @@
+pwd:
+  description: バッチのテスト
+  expression: cron(*/5 * * * ? *)
+  commands: [
+    "whoami",
+    "pwd"
+  ]

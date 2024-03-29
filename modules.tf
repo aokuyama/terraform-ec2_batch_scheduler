@@ -4,13 +4,5 @@ module "scheduler_example" {
   env         = "example"
   aws_region  = var.region
   instance_id = aws_instance.example.id
-  schedule = {
-    pwd = {
-      description = "バッチのテスト"
-      expression  = "cron(*/5 * * * ? *)"
-      commands = [
-        "whoami", "pwd"
-      ]
-    }
-  }
+  schedule    = yamldecode(file("./schedule.yml"))
 }
