@@ -1,0 +1,4 @@
+{
+    "editor.defaultFormatter": "hashicorp.terraform",
+    "editor.formatOnSave": true
+}
