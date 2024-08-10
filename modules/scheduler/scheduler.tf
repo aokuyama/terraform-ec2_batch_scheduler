@@ -82,11 +82,22 @@ resource "aws_iam_policy" "sendcommand" {
     {
       Statement = [
         {
-          Action = "ssm:SendCommand"
+          Action = [
+            "ssm:SendCommand",
+          ]
           Effect = "Allow"
           Resource = [
             "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
             data.aws_instance.ec2.arn,
+          ]
+        },
+        {
+          Action = [
+            "ssm:GetCommandInvocation",
+          ]
+          Effect = "Allow"
+          Resource = [
+            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
           ]
         },
       ]
