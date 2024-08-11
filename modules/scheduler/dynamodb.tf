@@ -1,0 +1,12 @@
+resource "aws_dynamodb_table" "state" {
+  name           = "sendcommand-to-ec2-state"
+  billing_mode   = "PROVISIONED"
+  read_capacity  = 1
+  write_capacity = 1
+  hash_key       = "commandId"
+
+  attribute {
+    name = "commandId"
+    type = "S"
+  }
+}

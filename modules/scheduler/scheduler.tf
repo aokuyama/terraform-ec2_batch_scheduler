@@ -34,6 +34,7 @@ resource "aws_scheduler_schedule" "batch" {
     role_arn = aws_iam_role.this.arn
 
     input = jsonencode({
+      commandId = "/${local.log_prefix}/${each.key}"
       sendCommand = {
         commands               = each.value.commands
         workingDirectory       = ["/opt/aws"]

@@ -1,9 +1,49 @@
 resource "aws_sfn_state_machine" "send_command_to_ec2" {
-  name     = "SendCommandToEc2StateMachine"
+  name     = "sendcommand-to-ec2"
   role_arn = aws_iam_role.sfn.arn
   definition = jsonencode({
-    StartAt = "SendCommandToEc2"
+    StartAt = "CheckLockCommandId",
     States = {
+      CheckLockCommandId = {
+        Type = "Choice"
+        Choices = [
+          {
+            Variable  = "$.commandId"
+            IsPresent = true,
+            Next      = "LockCommand"
+          }
+        ]
+        Default = "SendCommandToEc2"
+      }
+      LockCommand = {
+        Type     = "Task",
+        Resource = "arn:aws:states:::dynamodb:putItem",
+        Parameters = {
+          TableName = aws_dynamodb_table.state.name
+          Item = {
+            "commandId" = {
+              "S.$" = "$.commandId"
+            }
+          }
+          ConditionExpression = "attribute_not_exists(commandId)"
+        }
+        Next = "SendCommandToEc2",
+        Catch = [
+          {
+            ErrorEquals = [
+              "DynamoDB.ConditionalCheckFailedException"
+            ]
+            Next = "CommandAlreadyRunning"
+          },
+          {
+            ErrorEquals = [
+              "States.TaskFailed"
+            ]
+            Next = "HandleError"
+          }
+        ]
+        ResultPath = null
+      }
       SendCommandToEc2 = {
         Type     = "Task"
         Resource = "arn:aws:states:::aws-sdk:ssm:sendCommand"
@@ -24,9 +64,9 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
           TimeoutSeconds = 60
         }
         ResultPath = "$.SendCommandOut"
-        Next       = "Wait"
+        Next       = "WaitForCommand"
       }
-      Wait = {
+      WaitForCommand = {
         Type    = "Wait"
         Seconds = 5
         Next    = "GetCommandInvocation"
@@ -39,28 +79,69 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
           InstanceId    = var.instance_id
         }
         ResultPath = "$.GetCommandInvocationOut"
-        Next       = "Is InProgress"
+        Next       = "IsInProgress"
       }
-      "Is InProgress" = {
+      IsInProgress = {
         Type = "Choice"
         Choices = [{
           Variable     = "$.GetCommandInvocationOut.Status"
           StringEquals = "InProgress"
-          Next         = "Wait"
+          Next         = "WaitForCommand"
         }]
+        Default = "CheckUnlockCommandId"
+      }
+      CheckUnlockCommandId = {
+        Type = "Choice"
+        Choices = [
+          {
+            Variable  = "$.commandId"
+            IsPresent = true,
+            Next      = "UnlockCommand"
+          }
+        ]
         Default = "Success"
+      }
+      UnlockCommand = {
+        Type     = "Task",
+        Resource = "arn:aws:states:::dynamodb:deleteItem",
+        Parameters = {
+          TableName = aws_dynamodb_table.state.name
+          Key = {
+            "commandId" = {
+              "S.$" = "$.commandId"
+            }
+          }
+        }
+        Next = "Success"
+        Catch = [
+          {
+            ErrorEquals = [
+              "States.TaskFailed"
+            ]
+            Next = "HandleError"
+          }
+        ]
+        ResultPath = null
       }
       Success = {
         Type = "Succeed"
+      }
+      HandleError = {
+        Type = "Fail"
+      }
+      CommandAlreadyRunning = {
+        Type = "Fail"
       }
     }
   })
 }
 
 resource "aws_iam_role" "sfn" {
+  name               = "${var.env}-scheduler-sfn"
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role_policy.json
   managed_policy_arns = [
     aws_iam_policy.sendcommand.arn,
+    aws_iam_policy.put_dynamodb.arn,
   ]
 }
 
@@ -94,6 +175,24 @@ data "aws_iam_policy_document" "sendcommand" {
     effect  = "Allow"
     resources = [
       "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
+    ]
+  }
+}
+resource "aws_iam_policy" "put_dynamodb" {
+  name   = "${var.env}-scheduler-put_dynamodb"
+  path   = "/service-role/"
+  policy = data.aws_iam_policy_document.put_dynamodb.json
+}
+
+data "aws_iam_policy_document" "put_dynamodb" {
+  statement {
+    actions = [
+      "dynamodb:PutItem",
+      "dynamodb:deleteItem",
+    ]
+    effect = "Allow"
+    resources = [
+      aws_dynamodb_table.state.arn,
     ]
   }
 }
