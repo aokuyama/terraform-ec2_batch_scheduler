@@ -4,10 +4,11 @@ data "aws_instance" "ec2" {
 }
 variable "schedule" {
   type = map(object({
-    description = string
-    expression  = string
-    timezone    = optional(string, "Asia/Tokyo")
-    commands    = list(string)
+    description   = string
+    expression    = string
+    timezone      = optional(string, "Asia/Tokyo")
+    allow_overlap = optional(bool, false)
+    commands      = list(string)
   }))
 }
 
@@ -33,14 +34,15 @@ resource "aws_scheduler_schedule" "batch" {
     arn      = aws_sfn_state_machine.send_command_to_ec2.arn
     role_arn = aws_iam_role.this.arn
 
-    input = jsonencode({
-      commandId = "/${local.log_prefix}/${each.key}"
+    input = jsonencode(merge({
       sendCommand = {
         commands               = each.value.commands
         workingDirectory       = ["/opt/aws"]
         cloudWatchLogGroupName = "/${local.log_prefix}/${each.key}"
       }
-    })
+      }, each.value.allow_overlap ? {} : {
+      commandId = "/${local.log_prefix}/${each.key}"
+    }))
     retry_policy {
       maximum_retry_attempts = 0
     }

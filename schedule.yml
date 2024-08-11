@@ -1,7 +1,24 @@
 pwd:
-  description: バッチのテスト
-  expression: cron(*/5 * * * ? *)
+  description: バッチ処理のテスト
+  expression: cron(*/30 * * * ? *)
   commands: [
     "whoami",
     "pwd"
   ]
+
+long:
+  description: 実行時間の長いバッチ処理のテスト
+  expression: cron(*/5 * * * ? *)
+  commands: [
+    "sleep 3000",
+    "pwd"
+  ]
+
+shot:
+  description: 重複実行が許されるバッチ処理のテスト
+  expression: cron(*/5 * * * ? *)
+  commands: [
+    "sleep 360",
+    "pwd"
+  ]
+  allow_overlap: true
