@@ -30,26 +30,15 @@ resource "aws_scheduler_schedule" "batch" {
   }
 
   target {
-    arn      = "arn:aws:scheduler:::aws-sdk:ssm:sendCommand"
+    arn      = aws_sfn_state_machine.send_command_to_ec2.arn
     role_arn = aws_iam_role.this.arn
 
     input = jsonencode({
-      CloudWatchOutputConfig = {
-        CloudWatchLogGroupName  = "/${local.log_prefix}/${each.key}"
-        CloudWatchOutputEnabled = true
+      sendCommand = {
+        commands               = each.value.commands
+        workingDirectory       = ["/opt/aws"]
+        cloudWatchLogGroupName = "/${local.log_prefix}/${each.key}"
       }
-      DocumentName    = "AWS-RunShellScript"
-      DocumentVersion = "1"
-      InstanceIds = [
-        data.aws_instance.ec2.id
-      ]
-      MaxConcurrency = "1"
-      MaxErrors      = "1"
-      Parameters = {
-        commands         = each.value.commands,
-        workingDirectory = ["/opt/aws"]
-      }
-      TimeoutSeconds = 30
     })
     retry_policy {
       maximum_retry_attempts = 0
@@ -61,7 +50,7 @@ resource "aws_iam_role" "this" {
   name               = "${var.env}-scheduler"
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume_role_policy.json
   managed_policy_arns = [
-    aws_iam_policy.sendcommand.arn,
+    aws_iam_policy.execute_sfn.arn,
   ]
 }
 
@@ -75,30 +64,19 @@ data "aws_iam_policy_document" "scheduler_assume_role_policy" {
   }
 }
 
-resource "aws_iam_policy" "sendcommand" {
-  name = "${var.env}-scheduler-sendcommand"
+resource "aws_iam_policy" "execute_sfn" {
+  name = "${var.env}-scheduler-execute-sfn"
   path = "/service-role/"
   policy = jsonencode(
     {
       Statement = [
         {
           Action = [
-            "ssm:SendCommand",
+            "states:StartExecution",
           ]
           Effect = "Allow"
           Resource = [
-            "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
-            data.aws_instance.ec2.arn,
-          ]
-        },
-        {
-          Action = [
-            "ssm:GetCommandInvocation",
-          ]
-          Effect = "Allow"
-          Resource = [
-            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
-          ]
+          aws_sfn_state_machine.send_command_to_ec2.arn, ]
         },
       ]
       Version = "2012-10-17"

@@ -1,20 +1,3 @@
-resource "aws_iam_role" "sfn" {
-  assume_role_policy = jsonencode({
-    Version = "2012-10-17"
-    Statement = [{
-      Effect = "Allow"
-      Principal = {
-        Service = "states.amazonaws.com"
-      }
-      Action = "sts:AssumeRole"
-    }]
-  })
-
-  managed_policy_arns = [
-    aws_iam_policy.sendcommand.arn,
-  ]
-}
-
 resource "aws_sfn_state_machine" "send_command_to_ec2" {
   name     = "SendCommandToEc2StateMachine"
   role_arn = aws_iam_role.sfn.arn
@@ -28,13 +11,16 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
           DocumentName    = "AWS-RunShellScript"
           DocumentVersion = "1"
           InstanceIds     = [var.instance_id]
-          MaxConcurrency  = "50"
-          MaxErrors       = "50"
           Parameters = {
-            workingDirectory = [""]
-            executionTimeout = ["3600"]
-            commands         = ["whoami", "pwd"]
+            "workingDirectory.$" = "$.sendCommand.workingDirectory"
+            "commands.$"         = "$.sendCommand.commands"
           }
+          CloudWatchOutputConfig = {
+            "CloudWatchLogGroupName.$" = "$.sendCommand.cloudWatchLogGroupName"
+            CloudWatchOutputEnabled    = true
+          }
+          MaxConcurrency = "1"
+          MaxErrors      = "1"
           TimeoutSeconds = 60
         }
         ResultPath = "$.SendCommandOut"
@@ -69,4 +55,52 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
       }
     }
   })
+}
+
+resource "aws_iam_role" "sfn" {
+  assume_role_policy = data.aws_iam_policy_document.sfn_assume_role_policy.json
+  managed_policy_arns = [
+    aws_iam_policy.sendcommand.arn,
+  ]
+}
+
+data "aws_iam_policy_document" "sfn_assume_role_policy" {
+  statement {
+    actions = ["sts:AssumeRole"]
+    principals {
+      type        = "Service"
+      identifiers = ["states.amazonaws.com"]
+    }
+  }
+}
+
+resource "aws_iam_policy" "sendcommand" {
+  name = "${var.env}-scheduler-sendcommand"
+  path = "/service-role/"
+  policy = jsonencode(
+    {
+      Statement = [
+        {
+          Action = [
+            "ssm:SendCommand",
+          ]
+          Effect = "Allow"
+          Resource = [
+            "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
+            data.aws_instance.ec2.arn,
+          ]
+        },
+        {
+          Action = [
+            "ssm:GetCommandInvocation",
+          ]
+          Effect = "Allow"
+          Resource = [
+            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
+          ]
+        },
+      ]
+      Version = "2012-10-17"
+    }
+  )
 }
