@@ -65,21 +65,17 @@ data "aws_iam_policy_document" "scheduler_assume_role_policy" {
 }
 
 resource "aws_iam_policy" "execute_sfn" {
-  name = "${var.env}-scheduler-execute-sfn"
-  path = "/service-role/"
-  policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = [
-            "states:StartExecution",
-          ]
-          Effect = "Allow"
-          Resource = [
-          aws_sfn_state_machine.send_command_to_ec2.arn, ]
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
+  name   = "${var.env}-scheduler-execute-sfn"
+  path   = "/service-role/"
+  policy = data.aws_iam_policy_document.execute_sfn.json
+}
+
+data "aws_iam_policy_document" "execute_sfn" {
+  statement {
+    actions = ["states:StartExecution"]
+    effect  = "Allow"
+    resources = [
+      aws_sfn_state_machine.send_command_to_ec2.arn,
+    ]
+  }
 }

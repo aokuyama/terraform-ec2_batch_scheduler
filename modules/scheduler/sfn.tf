@@ -75,32 +75,25 @@ data "aws_iam_policy_document" "sfn_assume_role_policy" {
 }
 
 resource "aws_iam_policy" "sendcommand" {
-  name = "${var.env}-scheduler-sendcommand"
-  path = "/service-role/"
-  policy = jsonencode(
-    {
-      Statement = [
-        {
-          Action = [
-            "ssm:SendCommand",
-          ]
-          Effect = "Allow"
-          Resource = [
-            "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
-            data.aws_instance.ec2.arn,
-          ]
-        },
-        {
-          Action = [
-            "ssm:GetCommandInvocation",
-          ]
-          Effect = "Allow"
-          Resource = [
-            "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
-          ]
-        },
-      ]
-      Version = "2012-10-17"
-    }
-  )
+  name   = "${var.env}-scheduler-sendcommand"
+  path   = "/service-role/"
+  policy = data.aws_iam_policy_document.sendcommand.json
+}
+
+data "aws_iam_policy_document" "sendcommand" {
+  statement {
+    actions = ["ssm:SendCommand"]
+    effect  = "Allow"
+    resources = [
+      "arn:aws:ssm:${var.aws_region}::document/AWS-RunShellScript",
+      data.aws_instance.ec2.arn,
+    ]
+  }
+  statement {
+    actions = ["ssm:GetCommandInvocation"]
+    effect  = "Allow"
+    resources = [
+      "arn:aws:ssm:${var.aws_region}:${data.aws_caller_identity.self.account_id}:*",
+    ]
+  }
 }
