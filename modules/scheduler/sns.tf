@@ -49,3 +49,29 @@ data "aws_iam_policy_document" "states" {
     }
   }
 }
+
+resource "aws_chatbot_slack_channel_configuration" "states" {
+  configuration_name = "${local.resource_name}-states-slack-notifications"
+  iam_role_arn       = aws_iam_role.states.arn
+  slack_team_id      = var.slack.team_id
+  slack_channel_id   = var.slack.channel_id
+  sns_topic_arns     = [aws_sns_topic.states.arn]
+}
+
+resource "aws_iam_role" "states" {
+  name = "${local.resource_name}-states-slack-notifications"
+  assume_role_policy = jsonencode({
+    Version = "2012-10-17"
+    Statement = [
+      {
+        Action = "sts:AssumeRole"
+        Effect = "Allow"
+        Sid    = ""
+        Principal = {
+          Service = "chatbot.amazonaws.com"
+        }
+      },
+    ]
+  })
+  managed_policy_arns = ["arn:aws:iam::aws:policy/AWSResourceExplorerReadOnlyAccess"]
+}
