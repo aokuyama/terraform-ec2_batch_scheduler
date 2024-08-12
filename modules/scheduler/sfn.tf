@@ -1,5 +1,5 @@
 resource "aws_sfn_state_machine" "send_command_to_ec2" {
-  name     = "sendcommand-to-ec2"
+  name     = "${var.env}-sendcommand-to-ec2"
   role_arn = aws_iam_role.sfn.arn
   definition = jsonencode({
     StartAt = "CheckLockCommandId",
@@ -137,11 +137,11 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
 }
 
 resource "aws_iam_role" "sfn" {
-  name               = "${var.env}-scheduler-sfn"
+  name               = "${local.resource_name}-sfn"
   assume_role_policy = data.aws_iam_policy_document.sfn_assume_role_policy.json
   managed_policy_arns = [
     aws_iam_policy.sendcommand.arn,
-    aws_iam_policy.put_dynamodb.arn,
+    aws_iam_policy.dynamodb.arn,
   ]
 }
 
@@ -156,7 +156,7 @@ data "aws_iam_policy_document" "sfn_assume_role_policy" {
 }
 
 resource "aws_iam_policy" "sendcommand" {
-  name   = "${var.env}-scheduler-sendcommand"
+  name   = "${local.resource_name}-sendcommand"
   path   = "/service-role/"
   policy = data.aws_iam_policy_document.sendcommand.json
 }
@@ -178,13 +178,13 @@ data "aws_iam_policy_document" "sendcommand" {
     ]
   }
 }
-resource "aws_iam_policy" "put_dynamodb" {
-  name   = "${var.env}-scheduler-put_dynamodb"
+resource "aws_iam_policy" "dynamodb" {
+  name   = "${local.resource_name}-dynamodb"
   path   = "/service-role/"
-  policy = data.aws_iam_policy_document.put_dynamodb.json
+  policy = data.aws_iam_policy_document.dynamodb.json
 }
 
-data "aws_iam_policy_document" "put_dynamodb" {
+data "aws_iam_policy_document" "dynamodb" {
   statement {
     actions = [
       "dynamodb:PutItem",

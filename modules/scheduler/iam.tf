@@ -1,5 +1,5 @@
 resource "aws_iam_policy" "logger" {
-  name = "${var.env}-scheduler-log"
+  name = "${local.resource_name}-log"
   path = "/service-role/"
   policy = jsonencode(
     {

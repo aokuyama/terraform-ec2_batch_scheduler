@@ -50,7 +50,7 @@ resource "aws_scheduler_schedule" "batch" {
 }
 
 resource "aws_iam_role" "this" {
-  name               = "${var.env}-scheduler"
+  name               = local.resource_name
   assume_role_policy = data.aws_iam_policy_document.scheduler_assume_role_policy.json
   managed_policy_arns = [
     aws_iam_policy.execute_sfn.arn,
@@ -68,7 +68,7 @@ data "aws_iam_policy_document" "scheduler_assume_role_policy" {
 }
 
 resource "aws_iam_policy" "execute_sfn" {
-  name   = "${var.env}-scheduler-execute-sfn"
+  name   = "${local.resource_name}-execute-sfn"
   path   = "/service-role/"
   policy = data.aws_iam_policy_document.execute_sfn.json
 }
