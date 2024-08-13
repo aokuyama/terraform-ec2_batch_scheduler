@@ -8,7 +8,7 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         Type = "Choice"
         Choices = [
           {
-            Variable  = "$.commandId"
+            Variable  = "$.appCommandId"
             IsPresent = true,
             Next      = "LockCommand"
           }
@@ -21,11 +21,11 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         Parameters = {
           TableName = aws_dynamodb_table.state.name
           Item = {
-            "commandId" = {
-              "S.$" = "$.commandId"
+            "appCommandId" = {
+              "S.$" = "$.appCommandId"
             }
           }
-          ConditionExpression = "attribute_not_exists(commandId)"
+          ConditionExpression = "attribute_not_exists(appCommandId)"
         }
         Next = "SendCommandToEc2",
         Catch = [
@@ -94,7 +94,7 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         Type = "Choice"
         Choices = [
           {
-            Variable  = "$.commandId"
+            Variable  = "$.appCommandId"
             IsPresent = true,
             Next      = "UnlockCommand"
           }
@@ -107,8 +107,8 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         Parameters = {
           TableName = aws_dynamodb_table.state.name
           Key = {
-            "commandId" = {
-              "S.$" = "$.commandId"
+            "appCommandId" = {
+              "S.$" = "$.appCommandId"
             }
           }
         }

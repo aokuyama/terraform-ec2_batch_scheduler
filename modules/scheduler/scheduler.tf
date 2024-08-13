@@ -24,7 +24,6 @@ resource "aws_scheduler_schedule" "batch" {
   description                  = each.value.description
   schedule_expression          = each.value.expression
   schedule_expression_timezone = each.value.timezone
-  state                        = "ENABLED"
 
   flexible_time_window {
     mode = "OFF"
@@ -41,7 +40,7 @@ resource "aws_scheduler_schedule" "batch" {
         cloudWatchLogGroupName = "/${local.log_prefix}/${each.key}"
       }
       }, each.value.allow_overlap ? {} : {
-      commandId = "/${local.log_prefix}/${each.key}"
+      appCommandId = "/${local.log_prefix}/${each.key}"
     }))
     retry_policy {
       maximum_retry_attempts = 0
