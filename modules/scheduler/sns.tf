@@ -1,9 +1,9 @@
-resource "aws_sns_topic" "states" {
-  name = "${local.resource_name}-states"
+resource "aws_sns_topic" "error" {
+  name = "${local.resource_name}-error"
 }
 
-resource "aws_cloudwatch_event_rule" "states" {
-  name = "${local.resource_name}-states"
+resource "aws_cloudwatch_event_rule" "error" {
+  name = "${local.resource_name}-error"
   event_pattern = jsonencode({
     source : ["aws.states"],
     detail-type : ["Step Functions Execution Status Change"]
@@ -12,7 +12,6 @@ resource "aws_cloudwatch_event_rule" "states" {
         aws_sfn_state_machine.send_command_to_ec2.arn,
       ]
       status : [
-        "SUCCEEDED",
         "FAILED",
         "TIMED_OUT",
         "ABORTED",
@@ -21,22 +20,22 @@ resource "aws_cloudwatch_event_rule" "states" {
   })
 }
 
-resource "aws_cloudwatch_event_target" "states" {
-  rule = aws_cloudwatch_event_rule.states.name
-  arn  = aws_sns_topic.states.arn
+resource "aws_cloudwatch_event_target" "error" {
+  rule = aws_cloudwatch_event_rule.error.name
+  arn  = aws_sns_topic.error.arn
 }
 
-resource "aws_sns_topic_policy" "states" {
-  arn    = aws_sns_topic.states.arn
-  policy = data.aws_iam_policy_document.states.json
+resource "aws_sns_topic_policy" "error" {
+  arn    = aws_sns_topic.error.arn
+  policy = data.aws_iam_policy_document.error.json
 }
 
-data "aws_iam_policy_document" "states" {
+data "aws_iam_policy_document" "error" {
   statement {
     actions = ["sns:Publish"]
     effect  = "Allow"
     resources = [
-      aws_sns_topic.states.arn,
+      aws_sns_topic.error.arn,
     ]
     principals {
       type        = "Service"
@@ -45,21 +44,21 @@ data "aws_iam_policy_document" "states" {
     condition {
       test     = "ArnLike"
       variable = "AWS:SourceArn"
-      values   = [aws_cloudwatch_event_rule.states.arn]
+      values   = [aws_cloudwatch_event_rule.error.arn]
     }
   }
 }
 
-resource "aws_chatbot_slack_channel_configuration" "states" {
-  configuration_name = "${local.resource_name}-states-slack-notifications"
-  iam_role_arn       = aws_iam_role.states.arn
+resource "aws_chatbot_slack_channel_configuration" "error" {
+  configuration_name = "${local.resource_name}-error-slack-notifications"
+  iam_role_arn       = aws_iam_role.error.arn
   slack_team_id      = var.slack.team_id
   slack_channel_id   = var.slack.channel_id
-  sns_topic_arns     = [aws_sns_topic.states.arn]
+  sns_topic_arns     = [aws_sns_topic.error.arn]
 }
 
-resource "aws_iam_role" "states" {
-  name = "${local.resource_name}-states-slack-notifications"
+resource "aws_iam_role" "error" {
+  name = "${local.resource_name}-error-slack-notifications"
   assume_role_policy = jsonencode({
     Version = "2012-10-17"
     Statement = [

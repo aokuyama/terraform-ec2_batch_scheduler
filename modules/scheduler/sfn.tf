@@ -130,7 +130,7 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         Type = "Fail"
       }
       CommandAlreadyRunning = {
-        Type = "Fail"
+        Type = "Succeed"
       }
     }
   })
@@ -187,7 +187,7 @@ resource "aws_iam_policy" "dynamodb" {
 data "aws_iam_policy_document" "dynamodb" {
   statement {
     actions = [
-      "dynamodb:PutItem",
+      "dynamodb:putItem",
       "dynamodb:deleteItem",
     ]
     effect = "Allow"
