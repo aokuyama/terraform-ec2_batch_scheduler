@@ -99,7 +99,7 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
             Next      = "UnlockCommand"
           }
         ]
-        Default = "Success"
+        Default = "CommandCompleted"
       }
       UnlockCommand = {
         Type     = "Task",
@@ -112,7 +112,7 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
             }
           }
         }
-        Next = "Success"
+        Next = "CommandCompleted"
         Catch = [
           {
             ErrorEquals = [
@@ -123,14 +123,29 @@ resource "aws_sfn_state_machine" "send_command_to_ec2" {
         ]
         ResultPath = null
       }
+      CommandCompleted = {
+        Type       = "Pass"
+        ResultPath = "$.customMessage"
+        Parameters = {
+          "Message" = "Success"
+        },
+        OutputPath = "$.customMessage",
+        Next       = "Success"
+      }
+      CommandAlreadyRunning = {
+        Type       = "Pass"
+        ResultPath = "$.customMessage"
+        Parameters = {
+          "Message" = "CommandAlreadyRunning"
+        },
+        OutputPath = "$.customMessage",
+        Next       = "Success"
+      }
       Success = {
         Type = "Succeed"
       }
       HandleError = {
         Type = "Fail"
-      }
-      CommandAlreadyRunning = {
-        Type = "Succeed"
       }
     }
   })

@@ -1,0 +1,10 @@
+{
+    "id": "<id>",
+    "version": "1.0",
+    "source": "custom",
+    "content": {
+        "title": "<https://<region>.console.aws.amazon.com/states/home?region=<region>#/v2/executions/details/<resource>|${name}>",
+        "textType": "client-markdown",
+        "description": <output>
+    }
+}

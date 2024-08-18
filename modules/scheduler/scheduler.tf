@@ -28,6 +28,10 @@ resource "aws_scheduler_schedule" "batch" {
   flexible_time_window {
     mode = "OFF"
   }
+  lifecycle {
+    ignore_changes = ["state"]
+
+  }
 
   target {
     arn      = aws_sfn_state_machine.send_command_to_ec2.arn

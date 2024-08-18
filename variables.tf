@@ -4,7 +4,10 @@ variable "region" {
 }
 variable "slack" {
   type = object({
-    team_id    = string
-    channel_id = string
+    team_id = string
+    channel_id = object({
+      success = string
+      error   = string
+    })
   })
 }
